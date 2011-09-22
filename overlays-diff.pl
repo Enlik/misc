@@ -7,12 +7,35 @@ use 5.010;
 # by Enlik
 # It is provided "as is" without express or implied warranty.
 
-# purpose and usage - comment at the bottom
+##########
+# "(1)" is not implemented!
+##########
+
+# *** when one "repository" provided:
+# prints greatest versions
+# (1) perl <this-script>.pl /home/overlay
+# (2) perl <this-script>.pl --list /tmp/list
+# (it can read from standard input too)
+
+
+# *** when two "repositories" provided:
+# compares differencies between ebuilds from argument 1 and 2
+# (1)
+# perl <this-script>.pl /usr/portage /home/overlay
+# (2)
+# find /usr/portage/ -name \*.ebuild > /tmp/1
+# find /home/overlay -name \*.ebuild > /tmp/2
+# perl <this-script>.pl --list /tmp/1 /tmp/2
+
+# additional options: --ign9
+# desc.: ignore live ebuilds (9999…) unless there's live ebuild only
+# (note: versions like 9999 and 999999 are not compared in such case)
 
 my %pkg_versions1=();
 my %pkg_versions2=();
 
-my $ign_live = exists $ENV{IGN9};
+my $ign_live;
+my $read_file_mode;
 
 # returns 0, 1 or -1
 sub vercomp_bit {
@@ -176,38 +199,19 @@ sub _dbg_vercomp_bit ($$) {
 #}
 #exit 0;
 
-if (@ARGV != 0 and @ARGV != 2) {
-	die "argsów winno zero tudzież dwa być\n"
-}
-
-my $two_sets = @ARGV == 0 ? 0 : 1;
-my $fileno = 0;
-my $file = "";
-my $pkgs = \%pkg_versions1; # well it could be made differently, but it's quite okay
-# note: setting $pkgs = 0 or anything like this is an ultimate protection against
-# unwanted autovivification!
-while(<>) {
-	if ($two_sets && not $ARGV eq $file) {
-		$fileno++;
-		say "*** file $fileno: $ARGV ***";
-		$file = $ARGV;
-		if ($fileno == 1) {
-			$pkgs = \%pkg_versions1;
-		} else {
-			$pkgs = \%pkg_versions2;
-		}
-	}
-	# /usr/local/portage/bla-fuj/meh/meh-3.ebuild
+sub process_line {
+	my $line = shift; # /usr/local/portage/bla-fuj/meh/meh-3.ebuild
+	my $pkgs = shift;
+	my $two_sets = shift;
 	my ($category, $name, $version, $package);
-	chomp;
 	if (
-		m/
+		$line =~ m/
 		([\da-z-]+) # category
 		\/ # a slash
 		([^\/]+) # part of a path (no slash): name
 		\/ # a slash
 		\2 # name again
-		-
+		- # a hyphen
 		(\d.*) # version
 		\.ebuild$
 		/x
@@ -247,7 +251,7 @@ while(<>) {
 		}
 	}
 	else {
-		die qq{parse error: $_\n} unless $_ eq '/usr/portage/skel.ebuild';
+		die qq{parse error: $line\n} unless $line eq '/usr/portage/skel.ebuild';
 		#~ die qq{kupa: $_, package=@{[$package//"(null)"]}, },
 			#~ qq{name=@{[$name//"(null)"]}, },
 			#~ qq{version=@{[$version//"(null)"]} },
@@ -255,23 +259,53 @@ while(<>) {
 	}
 }
 
-# print greatest versions
+#########################################
+
+$read_file_mode = ('--list' ~~ @ARGV);
+$ign_live = ('--ign9' ~~ @ARGV);
+@ARGV = grep { not $_ ~~ ["--list", "--ign9"] } @ARGV;
+
+if (@ARGV > 2) {
+	die "Wrong number of arguments! Should be 0 (stdin, one set), 1 (one set) ",
+		"or 2 (two sets). Kurczątko.\n";
+}
+
+my $two_sets = @ARGV == 2;
+
+if ($read_file_mode) {
+	# read from files
+	my $fileno = 0;
+	my $file = "";
+	my $pkgs = \%pkg_versions1;
+	# note: setting $pkgs = 0 or anything like this is an ultimate protection against
+	# unwanted autovivification!
+	while(<>) {
+		if ($two_sets && not $ARGV eq $file) {
+			$fileno++;
+			say "*** file $fileno: $ARGV ***";
+			$file = $ARGV;
+			if ($fileno == 1) {
+				$pkgs = \%pkg_versions1;
+			} else {
+				$pkgs = \%pkg_versions2;
+			}
+		}
+		chomp;
+		process_line ($_, $pkgs, $two_sets);
+	}
+}
+else {
+	# process directories
+	# todo, fixme, XXX: unimplemented :<
+	say "use --list";
+	...;
+}
+
 if (!$two_sets){
 	for my $e (sort keys %pkg_versions1) {
 		printf("%50s %s\n", $e, $pkg_versions1{$e});
 	}
 }
-# or do something useful - for what this script has been/is being made:
-# print if $ARGV[0] has newer version than $ARGV[1] (usually to compare
-# an overlay with Portage), wee
-
-# example usage:
-# find /usr/local/portage/ -name \*.ebuild > /tmp/1
-# find overlay -name \*.ebuild > /tmp/2
-# perl <this-script>.pl /tmp/1 /tmp/2
-
-# set IGN9=1 env. variable to ignore live ebuilds (9999…) unless there's live
-# ebuild only (note: versions like 9999 and 999999 are not compared if IGN9 set)
 else {
 	my $cmp;
 	my $tmp;
