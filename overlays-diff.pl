@@ -7,15 +7,11 @@ use 5.010;
 # by Enlik
 # It is provided "as is" without express or implied warranty.
 
-##########
-# "(1)" is not implemented!
-##########
-
 # *** when one "repository" provided:
 # prints greatest versions
 # (1) perl <this-script>.pl /home/overlay
 # (2) perl <this-script>.pl --list /tmp/list
-# (it can read from standard input too)
+# (it can read from standard input too - in such case --list is assumed)
 
 
 # *** when two "repositories" provided:
@@ -39,11 +35,11 @@ my $read_file_mode;
 
 # returns 0, 1 or -1
 sub vercomp_bit {
-	my ($v1, $v2) = @_; # for example "4", "_p4"
+	my ($v1, $v2) = @_; # for example "4", "p4"
 	# first arg must be defined, second may be empty
-	# (because it's made like this: blah(@longer_arr, @shorter_arr) below)
+	# (because it's made like this: blah(@longer_arr, @shorter_arr) in vercomp)
 
-	return 1 unless defined $v2;
+	$v2 //= "";
 
 	# compare bits on the same position like bla-0-$v1 and bla-0-$v2 (or _)
 	my %prio = (
@@ -51,10 +47,10 @@ sub vercomp_bit {
 		beta => -3,  # pkg-0_beta1
 		pre => -2,   # pkg-0_pre1
 		rc => -1,    # pkg-0_rc1
-		# DEFAULT => 0,# pkg-0.123
+		EMPTY => 0,  # pkg-0
 		r => 1,      # pkg-0-r1 // special
 		p => 2,      # pkg-0_p1
-		DEFAULT => 3 # pkg-0.123
+		DEFAULT => 3 # pkg-0.123 (because 0.123 > 0_p1)
 	);
 	my ($v1_prio, $v2_prio);
 	my ($v1_verbit, $v2_verbit);
@@ -74,6 +70,10 @@ sub vercomp_bit {
 		}
 
 		given ($$v) {
+			when (/^$/) {
+				$$v_prio = $prio{EMPTY};
+				$$v_verbit = 0;
+			}
 			when (/^\d+$/) {
 				$$v_prio = $prio{DEFAULT};
 				$$v_verbit = $$v;
@@ -128,7 +128,6 @@ sub vercomp_bit {
 	}
 }
 
-# needs more test
 sub vercomp {
 	my ($v1, $v2) = @_;
 	die "args!" unless @_ == 2;
@@ -187,17 +186,27 @@ sub _dbg_vercomp_bit ($$) {
 		$b2;
 }
 
-#my @bits = qw(12 2 2b 2c 1d r1 pre4 alpha3 alpha4);
-#for (1..20) {
-	#$ign_live = 0;
-	#my $r;
-	#$r = rand (scalar @bits);
-	#my $b1 = $bits[$r];
-	#$r = rand (scalar @bits);
-	#my $b2 = $bits[$r];
-	#_dbg_vercomp_bit $b1, $b2;
-#}
-#exit 0;
+if(0) {
+# this covers most cases; "a-" is only to make it understand easier
+my @versions = qw(a-0_pre a-1_pre1 a-1_pre2 a-2 a-2.1 a-2.1a a-2.1b_pre1
+	a-2.2 a-2.3_alpha1 a-2.3_alpha2 a-2.3_alpha2_p3 a-2.3_beta1 a-2.3_rc1
+	a-2.3 a-2.3-r1 a-2.3_p123 a-2.3_p123-r1);
+$_ = substr $_, 2 for @versions;
+
+for (my $i=0; $i<@versions; $i++) {
+	for (my $j=0; $j<@versions; $j++) {
+		my $cmp = vercomp ($versions[$i], $versions[$j]);
+		my $cmp_ok = $i <=> $j;
+		if ($cmp != $cmp_ok) {
+			# > is 1; < is -1; = is 0
+			say STDERR
+				"$versions[$i], $versions[$j]:\n   expected $cmp_ok, got: $cmp";
+		}
+	}
+}
+say "That's all!";
+exit 0;
+}
 
 sub process_line {
 	my $line = shift; # /usr/local/portage/bla-fuj/meh/meh-3.ebuild
@@ -239,8 +248,8 @@ sub process_line {
 				my $cmp = vercomp ($version, $pkgs->{$package});
 				if ($cmp > 0) {
 					if (!$two_sets) {
-						printf("[is greater]%37s %15s %15s\t[%s]\n",
-							$package, $version, $pkgs->{$package}, $cmp);
+						printf("[is greater]%36s %15s %15s\n",
+							$package, $version, $pkgs->{$package});
 					}
 					$pkgs->{$package} = $version;
 				}
@@ -259,7 +268,35 @@ sub process_line {
 	}
 }
 
+sub process_directory {
+	my ($dir, $pkgs, $two_sets) = @_;
+	die unless @_ == 3 and ref $pkgs eq 'HASH';
+
+	unless (-d $dir) {
+		die "Error: `$dir' doesn't exist or is not a directory.\n";
+	}
+
+	my $iter = File::Next::files( {
+			error_handler => sub { say STDERR "error: " . shift(); },
+			follow_symlinks => 1,
+			# follow symbolic link if it doesn't point to a directory
+			# note: File::Next::files() skips broken symbolic links too
+			descend_filter => sub { !( -l $_ && -d $_ ) },
+			file_filter => sub { /\.ebuild$/ }
+		},
+		$dir
+	);
+	while ( defined ( my $file = $iter->() ) ) {
+		process_line ($file, $pkgs, $two_sets);
+	}
+}
+
 #########################################
+
+if ('--help' ~~ @ARGV or '-h' ~~ @ARGV) {
+	say "Help is in a comment on the beginning of $0. :P";
+	exit 0;
+}
 
 $read_file_mode = ('--list' ~~ @ARGV);
 $ign_live = ('--ign9' ~~ @ARGV);
@@ -270,6 +307,9 @@ if (@ARGV > 2) {
 		"or 2 (two sets). Kurczątko.\n";
 }
 
+# assume --list if data is read from standard input
+$read_file_mode = 1 if @ARGV == 0;
+
 my $two_sets = @ARGV == 2;
 
 if ($read_file_mode) {
@@ -277,8 +317,8 @@ if ($read_file_mode) {
 	my $fileno = 0;
 	my $file = "";
 	my $pkgs = \%pkg_versions1;
-	# note: setting $pkgs = 0 or anything like this is an ultimate protection against
-	# unwanted autovivification!
+	# note: setting $pkgs = 0 or anything like this is an ultimate protection
+	# against unwanted autovivification!
 	while(<>) {
 		if ($two_sets && not $ARGV eq $file) {
 			$fileno++;
@@ -296,9 +336,26 @@ if ($read_file_mode) {
 }
 else {
 	# process directories
-	# todo, fixme, XXX: unimplemented :<
-	say "use --list";
-	...;
+	eval {
+		require File::Next;
+	};
+	if ($@) {
+		die "$@\nRequired module File::Next is not found.\n",
+			"Use --list or (if you're on Gentoo) install dev-perl/File-Next.\n";
+	}
+
+	my ($dir1, $dir2) = @ARGV; # dir2 can be undef
+
+	unless (-d $dir1) {
+		die "Error: `$dir1' doesn't exist or is not a directory.\n";
+	}
+
+	say "*** directory $dir1 ***";
+	process_directory ($dir1, \%pkg_versions1, $two_sets);
+	if ($two_sets) {
+		say "*** directory $dir2 ***";
+		process_directory ($dir2, \%pkg_versions2, $two_sets);
+	}
 }
 
 if (!$two_sets){
