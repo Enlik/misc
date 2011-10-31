@@ -7,25 +7,8 @@ use 5.010;
 # by Enlik
 # It is provided "as is" without express or implied warranty.
 
-# *** when one "repository" provided:
-# prints greatest versions
-# (1) perl <this-script>.pl /home/overlay
-# (2) perl <this-script>.pl --list /tmp/list
-# (it can read from standard input too - in such case --list is assumed)
-
-
-# *** when two "repositories" provided:
-# compares differencies between ebuilds from argument 1 and 2
-# (1)
-# perl <this-script>.pl /usr/portage /home/overlay
-# (2)
-# find /usr/portage/ -name \*.ebuild > /tmp/1
-# find /home/overlay -name \*.ebuild > /tmp/2
-# perl <this-script>.pl --list /tmp/1 /tmp/2
-
-# additional options: --ign9
-# desc.: ignore live ebuilds (9999…) unless there's live ebuild only
-# (note: versions like 9999 and 999999 are not compared in such case)
+# Help is on the bottom if you're looking for it!
+# quick introduction: ./overlays-diff.pl --ign9 /usr/portage /home/overlay
 
 my %pkg_versions1=();
 my %pkg_versions2=();
@@ -294,8 +277,8 @@ sub process_directory {
 #########################################
 
 if ('--help' ~~ @ARGV or '-h' ~~ @ARGV) {
-	say "Help is in a comment on the beginning of $0. :P";
-	exit 0;
+	exec ("perldoc", $0)
+		or die "You can open $0 and look at help on the bottom\n";
 }
 
 $read_file_mode = ('--list' ~~ @ARGV);
@@ -385,3 +368,78 @@ else {
 		}
 	}
 }
+
+=head1 SYNOPSIS
+
+	overlays-diff.pl [--ign9] DIRECTORY [DIRECTORY]
+	overlays-diff.pl [--ign9] --list LIST [LIST]
+	overlays-diff.pl --help
+	overlays-diff.pl -h
+
+=head1 DESCRIPTION
+
+This mega bla w00t script can be used to print differences between versions
+of packages in two Gentoo overlays.
+
+That happens if you provide two DIRECTORIES or two LIST files. If you provide
+only one (or zero and pipe data to program), it prints newest versions of
+packages found (and some unuseful crap, ignore it maybe).
+
+Note that only data contained in ebuild name is used. The files are not
+sourced nor parsed, what implies fact that slots and masks aren't supported.
+
+=head1 OPTIONS
+
+=over 4
+
+=item B<--ign9>
+
+Ignore live ebuilds (9999...) unless there's a only live ebuild for a package.
+Note: with this option versions like 9999 and 9999999 are threated as equal.
+
+=item B<--list>
+
+Read a file with list instead of traversing a directory. If this option is used,
+all arguments must be files. See "EXAMPLES" below.
+
+=item B<-h>, B<--help>
+
+Guess what!
+
+=back
+
+=head1 EXAMPLES
+
+=head2 Compare versions.
+
+=over 4
+
+=item Without B<--list>.
+
+ overlays-diff.pl /usr/portage /home/overlay
+
+=item With B<--list>.
+
+ find /usr/portage/ -name \*.ebuild > /tmp/1
+ find /home/overlay -name \*.ebuild > /tmp/2
+ overlays-diff.pl --list /tmp/1 /tmp/2
+
+=back
+
+=head2 Print newest versions.
+
+Three examples follow.
+
+ overlays-diff.pl /home/overlay
+ overlays-diff.pl --list /tmp/list
+ find /home/overlay -name \*.ebuild | overlays-diff.pl
+
+=head1 CONTACT
+
+See L<https://github.com/Enlik/misc/>.
+
+=head1 COPYRIGHT
+
+It is provided "as is" without express or implied warranty.
+
+=cut
