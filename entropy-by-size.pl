@@ -4,6 +4,8 @@ use strict;
 use 5.010;
 
 # prints size taken by each package and category, in order
+# also prints something like this for each present category:
+#  136371.3	x11-libs            (packages: 84, average 1623.47 kB)
 
 # pipe here equo query installed -v
 # (equo must be run with English locale; you can use LANG=en_US.UTF-8 equo ...)
