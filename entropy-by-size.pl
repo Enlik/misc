@@ -8,7 +8,8 @@ use 5.010;
 #  136371.3	x11-libs            (packages: 84, average 1623.47 kB)
 
 # pipe here equo query installed -v
-# (equo must be run with English locale; you can use LANG=en_US.UTF-8 equo ...)
+# equo must be run with English locale, for example you can use:
+# LANG=en_US.UTF-8 equo query installed -v | ./entropy-by-size.pl
 
 # made by Enlik
 
@@ -28,9 +29,9 @@ sub size_kB {
 	}
 
 	given($a_rest) {
-		1 when ("kB");
-		$a_num *= 1024 when ("MB");
-		$a_num *= 1048576 when ("GB"); # what?
+		when ("kB") { }
+		when ("MB") { $a_num *= 1024 }
+		when ("GB") { $a_num *= 1048576 } # what?
 		die "bad size suffix for $pkg: $a_rest (size = $a)\n"
 	}
 	return $a_num;
@@ -74,7 +75,8 @@ for my $pkg (sort { $sizes{$a}->{kB} <=> $sizes{$b}->{kB} } keys %sizes) {
 say "\nsizes by category (kB)\n";
 for my $category (sort { $sizes_by_categ{$a} <=> $sizes_by_categ{$b} }
 		keys %sizes_by_categ) {
-	printf "%9s\t%-20s", $sizes_by_categ{$category}, $category;
-	printf "(packages: %s, average %.2f kB)\n", $packages_by_categ{$category},
-		$sizes_by_categ{$category}/$packages_by_categ{$category};
+	printf "%9.1f\t%-20s", $sizes_by_categ{$category}, $category;
+	printf "(packages: %s, average %.2f kB)\n",
+		$packages_by_categ{$category},
+		$sizes_by_categ{$category} / $packages_by_categ{$category};
 }
