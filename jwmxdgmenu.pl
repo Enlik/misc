@@ -3,8 +3,8 @@
 use warnings;
 use strict;
 
-# jwmxdgmenu2.pl
-# Copyright (c) 2010-2011 Enlik
+# jwmxdgmenu.pl
+# Copyright (c) 2010-2012 Enlik
 # distributed under terms of MIT License
 
 
@@ -72,7 +72,7 @@ sub populate_bins {
 
 sub parse_df {
 	my $file = shift;
-	if (open(DFILE, $file)) {
+	if (open(DFILE, "<", $file)) {
 		#print STDERR "OPEN [$file]\n";
 		my %spec;
 		my @cats;
@@ -133,7 +133,7 @@ sub parse_df {
 
 sub parse_dirf {
 	my $file = shift;
-	if (open(DFILE, $file)) {
+	if (open(DFILE, "<", $file)) {
 		#print STDERR "OPEN [$file]\n";
 		my $name;
 		my $name_lang;
