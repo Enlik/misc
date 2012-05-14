@@ -1,7 +1,8 @@
 # this is to create a friendly log for equo that
 # records the most important actions
 
-# usage (assuming bash): put ". ~/SCRIPT_NAME" into /root/.bashrc
+# usage: save this script as /root/SCRIPT_NAME (pick any name you like)
+# and put ". ~/SCRIPT_NAME" into /root/.bashrc (assuming bash)
 
 equo() {
 	local log="/var/log/equo.log"
@@ -11,8 +12,7 @@ equo() {
 		case $arg in
 		install|remove|update|upgrade|conf)
 			executed=1
-			date >> "$log"
-			echo "equo $*" >> "$log"
+			echo "$(date): equo $*" >> "$log"
 			/usr/bin/equo "$@"
 		;;
 		-*)
