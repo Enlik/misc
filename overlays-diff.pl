@@ -15,6 +15,7 @@ my %pkg_versions2=();
 
 my $ign_live;
 my $read_file_mode;
+my $group_results;
 
 # returns 0, 1 or -1
 sub vercomp_bit {
@@ -282,8 +283,9 @@ if ('--help' ~~ @ARGV or '-h' ~~ @ARGV) {
 }
 
 $read_file_mode = ('--list' ~~ @ARGV);
-$ign_live = ('--ign9' ~~ @ARGV);
-@ARGV = grep { not $_ ~~ ["--list", "--ign9"] } @ARGV;
+$ign_live       = ('--ign9' ~~ @ARGV);
+$group_results  = ('--group' ~~ @ARGV);
+@ARGV = grep { not $_ ~~ ["--list", "--ign9", "--group"] } @ARGV;
 
 if (@ARGV > 2) {
 	die "Wrong number of arguments! Should be 0 (stdin, one set), 1 (one set) ",
@@ -346,32 +348,57 @@ if (!$two_sets){
 	}
 }
 else {
+	my @results_all=(); # array of: [ {'=' | '<' | '>'}, atom, ver1, ver2 ]
+	my @results_equal = ();
+	my @results_greater = ();
+	my @results_less = ();
 	my $cmp;
 	my $tmp;
 	for my $e (sort keys %pkg_versions2) {
 		if (exists $pkg_versions1{$e}) {
+			my $array;
 			$cmp = vercomp ($pkg_versions1{$e}, $pkg_versions2{$e});
 			given ($cmp) {
 				when (0) {
 					$tmp = '=';
+					$array = \@results_equal;
 				}
 				when (1) {
 					$tmp = '>';
+					$array = \@results_greater;
 				}
 				when (-1) {
 					$tmp = '<';
+					$array = \@results_less;
 				}
 				die;
 			}
-			say "$tmp $e: $pkg_versions1{$e} [$pkg_versions2{$e}]"
+			$array = \@results_all unless $group_results;
+			push @{ $array },
+				[ $tmp, $e, $pkg_versions1{$e}, $pkg_versions2{$e} ];
 		}
+	}
+
+	my $pnt = sub {
+		for my $res (@_) {
+			say "$res->[0] $res->[1]: $res->[2] [$res->[3]]"
+		}
+	};
+
+	if ($group_results) {
+		$pnt->( @results_greater );
+		$pnt->( @results_less );
+		$pnt->( @results_equal );
+	}
+	else {
+		$pnt->( @results_all );
 	}
 }
 
 =head1 SYNOPSIS
 
-	overlays-diff.pl [--ign9] DIRECTORY [DIRECTORY]
-	overlays-diff.pl [--ign9] --list LIST [LIST]
+	overlays-diff.pl [--ign9] [--group] DIRECTORY [DIRECTORY]
+	overlays-diff.pl [--ign9] [--group] --list LIST [LIST]
 	overlays-diff.pl --help
 	overlays-diff.pl -h
 
@@ -415,6 +442,13 @@ Note: with this option versions like 9999 and 9999999 are treated as equal.
 
 Read a file with list instead of traversing a directory. If this option is used,
 all arguments must be files. See "EXAMPLES" below.
+
+=item B<--group>
+
+Group display results. Only takes effect when when two DIRECTORIES or two LISTS
+are provided. With this option, packages that are newer in the first overlay
+than the second one are printed first; then those that are older, and then
+those that are equal.
 
 =item B<-h>, B<--help>
 
