@@ -297,24 +297,23 @@ my $two_sets = @ARGV == 2;
 
 if ($read_file_mode) {
 	# read from files
-	my $fileno = 0;
-	my $file = "";
-	my $pkgs = \%pkg_versions1;
-	# note: setting $pkgs = 0 or anything like this is an ultimate protection
-	# against unwanted autovivification!
-	while(<>) {
-		if ($two_sets && not $ARGV eq $file) {
-			$fileno++;
-			say "*** file $fileno: $ARGV ***";
-			$file = $ARGV;
-			if ($fileno == 1) {
-				$pkgs = \%pkg_versions1;
-			} else {
-				$pkgs = \%pkg_versions2;
-			}
+	my $file_num = 1;
+
+	for my $filename (@ARGV) {
+		die "Too many files?!" if $file_num > 2; # shouldn't happen
+
+		my $pkgs = $file_num == 1 ? \%pkg_versions1 : \%pkg_versions2;
+		my $fh;
+		unless (open $fh, "<", $filename) {
+			say STDERR "Cannot open $filename: $!";
+			exit 1
 		}
-		chomp;
-		process_line ($_, $pkgs, $two_sets);
+		say "*** reading $filename ***";
+		while (<$fh>) {
+			chomp;
+			process_line ($_, $pkgs, $two_sets);
+		}
+		$file_num++;
 	}
 }
 else {
