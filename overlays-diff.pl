@@ -381,12 +381,27 @@ else {
 This mega bla w00t script can be used to print differences between versions
 of packages in two Gentoo overlays.
 
-That happens if you provide two DIRECTORIES or two LIST files. If you provide
-only one (or zero and pipe data to program), it prints newest versions of
-packages found (and some unuseful crap, ignore it maybe).
+Differences are shown when you provide two DIRECTORIES or two LIST files.
+If you provide only one (or none and pipe data to program instead), a list
+of packages with their newest version available is printed (sometimes with
+debugging-like output, which you can ignore).
 
 Note that only data contained in ebuild name is used. The files are not
-sourced nor parsed, what implies fact that slots and masks aren't supported.
+sourced nor parsed, what implies that slots and masks aren't supported.
+
+=head2 Supported input.
+
+LIST file and data received on standard input are expected to contain data
+like find output from the example below.
+
+These lines are valid:
+
+ /usr/local/portage/dev-util/geany/geany-1.22.ebuild
+ dev-util/geany/geany-1.22.ebuild
+
+and this one is not.
+
+ dev-util/geany-1.22
 
 =head1 OPTIONS
 
@@ -395,7 +410,7 @@ sourced nor parsed, what implies fact that slots and masks aren't supported.
 =item B<--ign9>
 
 Ignore live ebuilds (9999...) unless there's a only live ebuild for a package.
-Note: with this option versions like 9999 and 9999999 are threated as equal.
+Note: with this option versions like 9999 and 9999999 are treated as equal.
 
 =item B<--list>
 
