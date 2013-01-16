@@ -10,7 +10,7 @@ equo() {
 	local arg
 	for arg in "$@"; do
 		case $arg in
-		install|remove|update|upgrade|conf|rescue)
+		install|remove|update|upgrade|conf|rescue|repo)
 			executed=1
 			echo "$(date): equo $*" >> "$log"
 			/usr/bin/equo "$@"
