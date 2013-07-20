@@ -6,25 +6,29 @@
 
 equo() {
 	local log="/var/log/equo.log"
-	local executed=0
+	local log_command=0
 	local arg
 	for arg in "$@"; do
 		case $arg in
 		install|remove|update|upgrade|conf|rescue|repo)
-			executed=1
-			echo "$(date): equo $*" >> "$log"
-			/usr/bin/equo "$@"
+			log_command=1
+		;;
+		-p|--pretend)
+			log_command=0
+			break
 		;;
 		-*)
-			executed=0
 			continue
 		;;
 		*)
-			executed=1
-			/usr/bin/equo "$@"
+			# this will cause that -p/--pretend that is
+			# too far from the beginning (equo install pkg -p)
+			# would still be logged, but who knows a -p that far
+			# would always mean pretend for any subcommand
+			break
 		;;
 		esac
-		break
 	done
-	[ "$executed" = 0 ] && /usr/bin/equo "$@"
+	[ "$log_command" = 1 ] && echo "$(date): equo $*" >> "$log"
+	/usr/bin/equo "$@"
 }
