@@ -7,12 +7,10 @@
 equo() {
 	local log="/var/log/equo.log"
 	local log_command=0
+	local command_is_known=0
 	local arg
 	for arg in "$@"; do
 		case $arg in
-		install|i | remove|rm | update|up | upgrade|u | conf | rescue | repo)
-			log_command=1
-		;;
 		-p|--pretend)
 			log_command=0
 			break
@@ -20,13 +18,21 @@ equo() {
 		-*)
 			continue
 		;;
-		*)
-			# this will cause that -p/--pretend that is
-			# too far from the beginning (equo install pkg -p)
-			# would still be logged, but who knows a -p that far
-			# would always mean pretend for any subcommand
-			break
+		install|i | remove|rm | update|up | upgrade|u | conf | rescue | repo)
+			# skip commands like: equo do-something-not-logged --funny conf
+			if [ $command_is_known = 0 ]; then
+				log_command=1
+				command_is_known=1
+			fi
 		;;
+		*)
+			if [ $command_is_known = 0 ]; then
+				log_command=0
+				break
+			fi
+		;;
+		# Traverse all arguments looking for -p/--pretend. Note: some subcommands
+		# don't take them.
 		esac
 	done
 	[ "$log_command" = 1 ] && echo "$(date): equo $*" >> "$log"
