@@ -10,7 +10,7 @@ equo() {
 	local arg
 	for arg in "$@"; do
 		case $arg in
-		install|remove|update|upgrade|conf|rescue|repo)
+		install|i | remove|rm | update|up | upgrade|u | conf | rescue | repo)
 			log_command=1
 		;;
 		-p|--pretend)
