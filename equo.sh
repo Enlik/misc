@@ -11,7 +11,7 @@ equo() {
 	local arg
 	for arg in "$@"; do
 		case $arg in
-		-p|--pretend)
+		-p|--pretend|-h|--help)
 			log_command=0
 			break
 		;;
